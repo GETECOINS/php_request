@@ -1,0 +1,63 @@
+<?php
+// Função para exibir o campo com o shortcode
+function display_custom_field() {
+    // Obter o ID do usuário atual
+    $user_id = get_current_user_id();
+    
+    // Obter o valor atual do campo "amizade"
+    $meta_value = get_user_meta($user_id, 'amizade', true);
+    
+    ob_start(); // Iniciar a captura do buffer de saída
+    ?>
+    <div id="amizade-container">
+        <label for="amizade">Amizade:</label>
+        <input type="text" class="input-text thwcfe-input-field" name="amizade" id="amizade" value="<?php echo esc_attr($meta_value); ?>" maxlength="7" minlength="4" aria-describedby="amizade-description" autocomplete="off">
+        <button id="update-amizade">Update</button>
+    </div>
+    <div id="amizade-message"></div>
+    <script type="text/javascript">
+        jQuery(document).ready(function($) {
+            var userId = '<?php echo $user_id; ?>'; // Passar o ID do usuário para o JavaScript
+
+            $('#update-amizade').on('click', function(e) {
+                e.preventDefault();
+                var amizadeValue = $('#amizade').val();
+
+                // Enviar requisição AJAX para a API externa
+                $.ajax({
+                    url: 'https://webserver-cryg5idg6q-rj.a.run.app/users?friend_code=' + encodeURIComponent(amizadeValue), // Construir a URL da API externa com o valor do campo
+                    type: 'POST',
+                    success: function(apiResponse) {
+                        // Processar a resposta da API externa
+                        if (apiResponse.success) {
+                            // Atualizar o campo no WordPress usando AJAX
+                            $.ajax({
+                                url: '<?php echo admin_url('admin-ajax.php'); ?>',
+                                type: 'POST',
+                                data: {
+                                    action: 'update_amizade',
+                                    amizade: apiResponse.new_amizade_value, // Usar o valor retornado pela API
+                                    user_id: userId // Passar o ID do usuário
+                                },
+                                success: function(response) {
+                                    $('#amizade-message').text(response.data.message);
+                                }
+                            });
+                        } else {
+                            $('#amizade-message').text('API externa falhou: ' + apiResponse.message);
+                        }
+                    },
+                    error: function() {
+                        $('#amizade-message').text('Erro ao chamar a API externa.');
+                    }
+                });
+            });
+        });
+    </script>
+    <?php
+    return ob_get_clean(); // Retornar o HTML gerado e limpar o buffer de saída
+}
+
+// Registrar o shortcode
+add_shortcode('custom_field_display', 'display_custom_field');
+?>
